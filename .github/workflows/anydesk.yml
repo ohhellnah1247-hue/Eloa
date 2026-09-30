@@ -1,0 +1,36 @@
+name: Run Ubuntu with AnyDesk
+
+on:
+  workflow_dispatch:
+
+jobs:
+  anydesk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install Desktop Environment & Dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y xfce4 xfce4-goodies curl
+
+      - name: Install AnyDesk
+        run: |
+          curl -fsSL https://anydesk.com | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/anydesk.gpg
+          echo "deb http://anydesk.com all main" | sudo tee /etc/apt/sources.list.d/anydesk-stable.list
+          sudo apt update
+          sudo apt install -y anydesk
+
+      - name: Configure AnyDesk Password
+        run: |
+          sudo systemctl start anydesk
+          echo "YourSecurePassword123" | sudo anydesk --set-password
+
+      - name: Get AnyDesk ID
+        run: |
+          anydesk --get-id
+
+      - name: Keep Runner Alive
+        uses: mxschmitt/action-tmate@v3
+        timeout-minutes: 30
