@@ -1,36 +1,52 @@
-name: Run Ubuntu with AnyDesk
+name: Ubuntu Desktop with AnyDesk
 
 on:
-  workflow_dispatch:
+  workflow_dispatch: # Allows you to manually trigger this from the GitHub Actions UI
 
 jobs:
-  anydesk:
+  run-anydesk:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Install Desktop Environment & Dependencies
+      - name: Install Desktop Environment & Xvfb
         run: |
-          sudo apt update
-          sudo apt install -y xfce4 xfce4-goodies curl
+          sudo apt-get update
+          sudo apt-get install -y xfce4 xfce4-goodies xvfb curl gnupg2
 
-      - name: Install AnyDesk
+      - name: Install AnyDesk (Fixed Script)
         run: |
-          curl -fsSL https://anydesk.com | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/anydesk.gpg
-          echo "deb http://anydesk.com all main" | sudo tee /etc/apt/sources.list.d/anydesk-stable.list
-          sudo apt update
-          sudo apt install -y anydesk
+          # 1. Download and trust the official AnyDesk repository signature key securely
+          curl -fsSL https://keys.anydesk.com/repos/DEB-GPG-KEY | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/anydesk.gpg
+          
+          # 2. Add the authentic AnyDesk deb repository server
+          echo "deb http://deb.anydesk.com/ all main" | sudo tee /etc/apt/sources.list.d/anydesk-stable.list
+          
+          # 3. Refresh apt indices and install the software
+          sudo apt-get update
+          sudo apt-get install -y anydesk
 
-      - name: Configure AnyDesk Password
+      - name: Configure AnyDesk & Password
         run: |
+          # Launch a virtual display session so AnyDesk has an active X-server GUI environment to bind to
+          Xvfb :1 -screen 0 1024x768x16 &
+          export DISPLAY=:1
+          
+          # Start the background daemon
           sudo systemctl start anydesk
+          
+          # Assign your custom unattended security access password
           echo "YourSecurePassword123" | sudo anydesk --set-password
 
-      - name: Get AnyDesk ID
+      - name: Retrieve AnyDesk ID
         run: |
+          export DISPLAY=:1
+          echo "=================================================="
+          echo "YOUR ANYDESK ID IS:"
           anydesk --get-id
+          echo "=================================================="
 
-      - name: Keep Runner Alive
+      - name: Keep Runner Alive (Session Bridge)
         uses: mxschmitt/action-tmate@v3
-        timeout-minutes: 30
+        timeout-minutes: 60 # Keeps runner active for up to an hour so your remote stream doesn't drop
